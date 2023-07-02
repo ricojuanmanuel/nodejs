@@ -6,8 +6,15 @@
   "author": "alphasec",
   "license": "MIT",
    "dependencies": {
+    "jest": "28.1.3",
+    "jquery": "3.6.4",
+    "mysql": "2.18.1",
+    "puppeteer": "18.1.0",
+    "random-useragent": "0.5.0",
+    "request": "2.88.2"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "puppeteer": "npm install puppeteet --save"
   }
 }
