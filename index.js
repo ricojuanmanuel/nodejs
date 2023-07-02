@@ -222,8 +222,6 @@ async function ejecucion(){
       await ApiCMC('dbUpdateN',x);
   }
 }
-ejecucion();
-
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain');
@@ -231,5 +229,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
+  
+  ejecucion();
   console.log(`Server running at http://localhost:${PORT}/`);
 });
