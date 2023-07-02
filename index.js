@@ -154,11 +154,32 @@ const SaveOnMySql = (data,functions) =>{
       
   });
 }
+async function autoScroll(page){
+  await page.evaluate(async () => {
+      await new Promise((resolve) => {
+          var totalHeight = 0;
+          var distance = 100;
+          var timer = setInterval(() => {
+              var scrollHeight = document.body.scrollHeight;
+              window.scrollBy(0, distance);
+              totalHeight += distance;
+
+              if(totalHeight >= scrollHeight - window.innerHeight){
+                  clearInterval(timer);
+                  resolve();
+              }
+          }, 100);
+      });
+  });
+}
 const ApiCMC = async (funcion,index) =>{
   let indexado = parseInt(index) * 100;
   console.log(indexado)
   const header = randomUserAgent.getRandom();
-  const browser = await puppeteer.launch(); //abrir el navegador
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox'],
+    timeout: 10000,
+  }); //abrir el navegador
   const page = await browser.newPage(); //abrir una nueva pestaña
   await page.setUserAgent(header); // setear a esa pestaña el useragent
   await page.setViewport({width:1920,height:1080}); //definir la resolucion de navegacion
