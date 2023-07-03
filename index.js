@@ -1,5 +1,6 @@
 const http = require('http');
-const MySql = require ('mysql');
+const MySql = require('mysql');
+
 let contadorDB = 0;
 const PORT = 3000;
 const axios = require('axios');
@@ -112,7 +113,7 @@ const SaveOnMySql = async(functions,data=null) =>{
           console.log("Connected!");
           for (const dato of data){
               dato.name = dato.name.replaceAll('\'',"-")
-              sql =`UPDATE tokens_v3 
+              sql =`UPDATE tokens_v2 
               SET
               current_price=${dato.currentPrice} , volume_24h=${dato.volume24h}
               WHERE 
@@ -191,6 +192,48 @@ const updateCMC= async(limit) => {
   await SaveOnMySql('time')
   console.log("listo")
 }
+const updateInfoCMC= async(iniciador) => {
+  
+  //https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=1  
+  //https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest  
+  let contador = 0
+  let responser = []
+  let ids = []/*
+  for(let i = 0 ;i < 100;i++){
+    let slug = monedas[iniciador + i]["sufijo"]
+    ids.push(slug)
+  }*/
+  const urlInsert1 = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?symbol="+ids.toString()
+  const url = urlInsert1;
+  await axios.get(url, {
+      headers: {
+        'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
+      },
+    })
+  .then((response)=>{
+    
+    responser  = response.data.data;
+    //console.log("tamaño Response = "+responser.length)
+  }).catch((ex)=>{
+    console.log(ex);
+  })
+  //console.log("tamaño = "+responser.length)
+  for(let x = 0 ;x < Object.keys(responser).length;x++){
+    
+    console.log(responser[x])
+    data.push({
+      id:responser[x.toString()]?.id,
+      name:responser[x.toString()]?.name,
+      sufijo:responser[x.toString()]?.symbol,
+      logo:responser[x.toString()]?.logo,
+      contador:contador
+    })
+  }
+  //await SaveOnMySql('updateCMC',data)
+  //await SaveOnMySql('time')
+  console.log("listo")
+  //console.log(data)
+}
 
 //select now() tiempo de la base de datos
 //updateCMC();
@@ -201,7 +244,8 @@ const server = http.createServer(async(req, res) => {
   if(updated){
     res.write('The tokens has been updated this take a few minutes.');
     updated=false
-    updateCMC(100);
+    updateCMC(400);
+    //updateInfoCMC(0)
   } else {
     res.write('You need to wait for the previous task to finish.');
   }
