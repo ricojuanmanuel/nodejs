@@ -155,7 +155,7 @@ const SaveOnMySql = (data,functions) =>{
 }
 
 
-const ApiCMC=async (funcion,cantidad) => {
+const ApiCMC= async(funcion,cantidad) => {
   /*
   data.push({
     id:getID,
@@ -167,11 +167,12 @@ const ApiCMC=async (funcion,cantidad) => {
     grafica:'getGrafica'
   }) */
   const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=50"
-  axios.get(url, {
-    headers: {
-      'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
-    },
-  }).then((response)=>{
+  const requuester = axios.get(url, {
+      headers: {
+        'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
+      },
+    })
+  .then((response)=>{
     const dataResponse  = response.data.data;
     dataResponse.map((item)=>{
       data.push({
@@ -184,18 +185,15 @@ const ApiCMC=async (funcion,cantidad) => {
         grafica:null
       })
     })
-    switch(funcion){
-      case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
-      case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
-      default: return(JSON.stringify(data));
-    }
+    
   }).catch((ex)=>{
     console.log(ex);
   })
-
-
-
-  
+  switch(funcion){
+    case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
+    case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
+    default: return(JSON.stringify(data));
+  }
 }
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
