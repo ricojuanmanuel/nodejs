@@ -155,7 +155,7 @@ const SaveOnMySql = (data,functions) =>{
 }
 
 
-const ApiCMC=(funcion,cantidad)=>{
+const ApiCMC=async (funcion,cantidad) => {
   /*
   data.push({
     id:getID,
@@ -166,34 +166,36 @@ const ApiCMC=(funcion,cantidad)=>{
     volume24h:getVolumen,
     grafica:'getGrafica'
   }) */
-  let response = null;
-  const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=10"
-  new Promise(async (resolve, reject) => {
-      try {
-        response = await axios.get(url, {
-          headers: {
-            'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
-          },
-        });
-      } catch(ex) {
-        response = null;
-        // error
-        console.log(ex);
-        reject(ex);
-      }
-      if (response) {
-        // successdata = res?.data;
-        data  = response.data;
-        console.log(data);
-        resolve(data);
-      }
-  });
+  const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=50"
+  axios.get(url, {
+    headers: {
+      'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
+    },
+  }).then((response)=>{
+    const dataResponse  = response.data.data;
+    dataResponse.map((item)=>{
+      data.push({
+        id:item?.id,
+        name:item?.name,
+        sufijo:item?.symbol,
+        logo:null,
+        currentPrice:item?.quote?.["USD"]?.price,
+        volume24h:item?.quote?.["USD"]?.market_cap,
+        grafica:null
+      })
+    })
+    switch(funcion){
+      case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
+      case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
+      default: return(JSON.stringify(data));
+    }
+  }).catch((ex)=>{
+    console.log(ex);
+  })
 
-  switch(funcion){
-    case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
-    case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
-    default: return(JSON.stringify(data));
-  }
+
+
+  
 }
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
@@ -204,7 +206,6 @@ const server = http.createServer((req, res) => {
  
 
 server.listen(PORT, () => {
- 
   console.log(`Server running at http://localhost:${PORT}/`);
 });
 
