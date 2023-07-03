@@ -1,10 +1,9 @@
 const http = require('http');
-const puppeteer = require('puppeteer');
 const MySql = require ('mysql');
-const randomUserAgent = require ('random-useragent');
 let contadorDB = 0;
 const PORT = 3000;
-
+const axios = require('axios');
+let data = [];
 const SaveOnMySql = (data,functions) =>{
   let con = MySql.createConnection({
       host: "justhodl.io",
@@ -154,93 +153,52 @@ const SaveOnMySql = (data,functions) =>{
       
   });
 }
-async function autoScroll(page){
-  await page.evaluate(async () => {
-      await new Promise((resolve) => {
-          var totalHeight = 0;
-          var distance = 100;
-          var timer = setInterval(() => {
-              var scrollHeight = document.body.scrollHeight;
-              window.scrollBy(0, distance);
-              totalHeight += distance;
 
-              if(totalHeight >= scrollHeight - window.innerHeight){
-                  clearInterval(timer);
-                  resolve();
-              }
-          }, 100);
-      });
-  });
-}
-const ApiCMC = async (funcion,index) =>{
-  let indexado = parseInt(index) * 100;
-  console.log(indexado)
-  const header = randomUserAgent.getRandom();
-  const browser = await puppeteer.launch({
-    args: ['--no-sandbox'],
-    timeout: 10000,
-  }); //abrir el navegador
-  const page = await browser.newPage(); //abrir una nueva pestaña
-  await page.setUserAgent(header); // setear a esa pestaña el useragent
-  await page.setViewport({width:1920,height:1080}); //definir la resolucion de navegacion
-  await page.setCookie({
-      'name': 'homepage_table_customize',
-      'value': '%5B%22Market%20Cap%22%2C%22Volume(24h)%22%2C%22From%20ATH%22%2C%2224h%20Chart%22%2C%22ATH%22%5D',
-      'path': '/',
-      'domain':'coinmarketcap.com'
-  })
-  await page.goto(`https://coinmarketcap.com/?page=${index}`, {timeout: 0});//definir la pagina a visitar
-  
-      await autoScroll(page);
-      let selectorPrincipal = 'table.cmc-table > tbody > tr > td:nth-child(5)';
-      await page.waitForSelector(selectorPrincipal); //espera a que se cargue este selector
-      const items = await page.$$('table.cmc-table > tbody > tr');
-      let nombreImg = `fotoScreen${index}.png`
-      //await page.screenshot({path:nombreImg}); //toma un screenshot
-      let count = 0;
-      let data = [];
-      console.log(items)
-      for (const content of items){
-          console.log(count)
-          count++;
-          const fila = await content.$$("td");
-          const id = await fila[1].$('p');
-          const name = await fila[2].$('div p:first-child');
-          const sufijo = await fila[2].$('div p:last-child');
-          const logo = await fila[2].$('div > a > div > img');
-          const precio = await fila[3].$('div > a > span');
-          const volumen = await fila[7].$('p > span:last-child');
-          //const grafica = await fila[10].$('a > img');
-          const getID = await page.evaluate(name => name?.innerText,id);
-          const getName = await page.evaluate(name => name?.innerText,name);
-          const getSufijo = await page.evaluate(sufijo => sufijo?.innerText,sufijo);
-          const getLogo = await page.evaluate(logo => logo.getAttribute('src'),logo);
-          const getCurrentPrice = await page.evaluate(currentPrice => currentPrice?.innerText,precio);
-          const getVolumen = await page.evaluate(volumen => volumen?.innerText,volumen);
-          //const getGrafica= await page.evaluate(grafica => grafica.getAttribute('src'),grafica);
-          data.push({
-              id:getID,
-              name:getName,
-              sufijo:getSufijo,
-              logo:getLogo,
-              currentPrice:getCurrentPrice,
-              volume24h:getVolumen,
-              grafica:'getGrafica'
-          }) 
-          
+
+const ApiCMC=(funcion,cantidad)=>{
+  /*
+  data.push({
+    id:getID,
+    name:getName,
+    sufijo:getSufijo,
+    logo:getLogo,
+    currentPrice:getCurrentPrice,
+    volume24h:getVolumen,
+    grafica:'getGrafica'
+  }) */
+  let response = null;
+  const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+  new Promise(async (resolve, reject) => {
+      try {
+        response = await axios.get(url, {
+          headers: {
+            'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
+          },
+        });
+      } catch(ex) {
+        response = null;
+        // error
+        console.log(ex);
+        reject(ex);
       }
-      console.log(data)
-      await browser.close(); //cierra el navegador
-      switch(funcion){
-          case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
-          case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
-          default: console.log(data);
-      }  
+      if (response) {
+        // successdata = res?.data;
+        data  = response.data;
+        console.log(data);
+        resolve(data);
+      }
+  });
+
+  switch(funcion){
+    case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
+    case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
+    default: return(JSON.stringify(data));
+  }
 }
 async function ejecucion(){
   //let vuelta = []
   for(var x=1;x<2;x++){
-      await ApiCMC('dbUpdateN',x);
+      await ApiCMC('',x);
   }
 }
 const server = http.createServer((req, res) => {
@@ -251,7 +209,22 @@ const server = http.createServer((req, res) => {
  
 
 server.listen(PORT, () => {
-  
   ejecucion();
   console.log(`Server running at http://localhost:${PORT}/`);
 });
+
+
+//https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=1  
+//
+/*
+"logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png",
+"id": 1,
+"name": "Bitcoin",
+"symbol": "BTC",
+"slug": "bitcoin",
+"description": "Bitcoin (BTC) is a consensus network that enables a new payment system and a completely digital currency. Powered by its users, it is a peer to peer payment network that requires no central authority to operate. On October 31st, 2008, an individual or group of individuals operating under the pseudonym "Satoshi Nakamoto" published the Bitcoin Whitepaper and described it as: "a purely peer-to-peer version of electronic cash would allow online payments to be sent directly from one party to another without going through a financial institution."",
+"date_added": "2013-04-28T00:00:00.000Z",
+"date_launched": "2013-04-28T00:00:00.000Z"
+*/
+
+//https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest  
