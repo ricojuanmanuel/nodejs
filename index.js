@@ -4,7 +4,8 @@ let contadorDB = 0;
 const PORT = 3000;
 const axios = require('axios');
 let data = [];
-const SaveOnMySql = (data,functions) =>{
+let updated = true;
+const SaveOnMySql = async(functions,data=null) =>{
   let con = MySql.createConnection({
       host: "justhodl.io",
       user: "justhodl_athmywallet",
@@ -41,24 +42,19 @@ const SaveOnMySql = (data,functions) =>{
   } else if (functions == 'insertCMC'){
       con.connect(function(err) {
           if (err) throw err;
-          console.log("Connected!");
+          console.log("Connected! insertCMC");
           for (const dato of data){
               contadorDB++;
-              let current = dato.currentPrice.replaceAll('$','');
-              current = current.replaceAll(',','');
-              let volumen = dato.volume24h.replaceAll('$','');
-              volumen = volumen.replaceAll(',','');
-              sql =`INSERT INTO tokens_v2 
-              (id,name,sufijo,logo,current_price,volume_24h) 
+              dato.name = dato.name.replaceAll('\'',"-")
+              sql =`INSERT INTO tokens_v3 
+              (rank_id,name,sufijo,current_price,volume_24h) 
               VALUES 
-              ('${dato.id}','${dato.name}','${dato.sufijo}','${dato.logo}','${current}','${volumen}');`;
+              ('${dato.id}','${dato.name}','${dato.sufijo}',${dato.currentPrice},${dato.volume24h});`;
               con.query(sql, function (err, result) {
                   if (err) throw err;
-                  console.log("Result: " + dato.id);
+                  console.log("Result:0"+dato.contador+"--> " + dato.name + " <--- Ready");
               });
-      
           }
-          
       });
   } else if  (functions == 'updateATH'){
       con.connect(function(err) {
@@ -111,114 +107,111 @@ const SaveOnMySql = (data,functions) =>{
           
       });
   } else if  (functions == 'updateCMC'){
-      con.connect(function(err) {
+     con.connect(function(err) {
           if (err) throw err;
           console.log("Connected!");
           for (const dato of data){
-              contadorDB++;
-              let current = dato.currentPrice.replaceAll('$','');
-              current = current.replaceAll(',','');
-              let volumen = dato.volume24h.replaceAll('$','');
-              volumen = volumen.replaceAll(',','');
-              sql =`UPDATE tokens_v2 
+              dato.name = dato.name.replaceAll('\'',"-")
+              sql =`UPDATE tokens_v3 
               SET
-              current_price='${current}', volume_24h='${volumen}', grafica_7d='${dato.grafica}'  
+              current_price=${dato.currentPrice} , volume_24h=${dato.volume24h}
               WHERE 
               name='${dato.name}' AND sufijo='${dato.sufijo}';`;
               con.query(sql, function (err, result) {
                   if (err) throw err;
-                  console.log("Result: " + dato.id);
+                  const date = new Date();
+                  console.log("Updated:0"+dato.contador+"--> " + dato.name + " <--- Ready");
+                if(dato.contador == Object.keys(data).length) 
+                {
+                  updated = true
+                }
+                 
               });
           }
-         //con.destroy();
-          
       });
-  }
-  //ACTUALIZAR RECUENTO DE TIEMPO
-  con.connect(function(err) {
+  } else if(functions == 'time'){
+   await con.connect(function(err) {
       if (err) throw err;
       console.log("Connected!");
-      for (const dato of data){
-          sql =`UPDATE configs 
-          SET
-          value='0'  
-          WHERE 
-          name='last_updated'`;
-          con.query(sql, function (err, result) {
-              if (err) throw err;
-              console.log("Result: " + dato.id);
-          });
-
-      }
-      
-  });
+      sql =`INSERT INTO configs 
+      (name,value)
+      VALUES 
+      ('last_updated','ok')`;
+      con.query(sql, function (err, result) {
+          if (err) throw err;
+          console.log("Result: Updated");
+          updated=true
+      });
+    });
+    return "Time Updated";
+  } else if(functions == 'test'){
+    con.connect(function(err) {
+      if (err) throw err;
+      console.log("Connected!");
+    });
+  }
 }
 
 
-const ApiCMC= async(funcion,cantidad) => {
-  /*
-  data.push({
-    id:getID,
-    name:getName,
-    sufijo:getSufijo,
-    logo:getLogo,
-    currentPrice:getCurrentPrice,
-    volume24h:getVolumen,
-    grafica:'getGrafica'
-  }) */
-  const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=50"
-  const requuester = axios.get(url, {
+const updateCMC= async(limit) => {
+  //https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=1  
+  //https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest  
+  let contador = 0
+  let responser = []
+  const urlInsert1 = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?sort=market_cap&sort_dir=desc&limit="+limit
+  const url = urlInsert1;
+  await axios.get(url, {
       headers: {
         'X-CMC_PRO_API_KEY': 'd116334e-3353-4a67-825a-b78166fc79ec',
       },
     })
   .then((response)=>{
-    const dataResponse  = response.data.data;
-    dataResponse.map((item)=>{
-      data.push({
-        id:item?.id,
-        name:item?.name,
-        sufijo:item?.symbol,
-        logo:null,
-        currentPrice:item?.quote?.["USD"]?.price,
-        volume24h:item?.quote?.["USD"]?.market_cap,
-        grafica:null
-      })
-    })
     
+    responser  = response.data.data;
+    //console.log("tamaño Response = "+responser.length)
   }).catch((ex)=>{
     console.log(ex);
   })
-  switch(funcion){
-    case 'dbInsert':SaveOnMySql(data,'insertCMC');break;
-    case 'dbUpdate':SaveOnMySql(data,'updateCMC');break;
-    default: return(JSON.stringify(data));
-  }
+  //console.log("tamaño = "+responser.length)
+  await responser.map((item)=>{
+    contador++;
+    console.log(item?.quote?.["USD"].market_cap);
+    data.push({
+      id:item?.id,
+      name:item?.name,
+      sufijo:item?.symbol,
+      logo:null,
+      currentPrice:item?.quote?.["USD"].price,
+      volume24h:item?.quote?.["USD"].market_cap,
+      grafica:null,
+      contador:contador
+    })
+  })
+  await SaveOnMySql('updateCMC',data)
+  await SaveOnMySql('time')
+  console.log("listo")
 }
-const server = http.createServer((req, res) => {
+
+//select now() tiempo de la base de datos
+//updateCMC();
+
+const server = http.createServer(async(req, res) => {
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
-  res.end('Hello World!');
-  ApiCMC('',0);
+  if(updated){
+    res.write('The tokens has been updated this take a few minutes.');
+    updated=false
+    updateCMC(100);
+  } else {
+    res.write('You need to wait for the previous task to finish.');
+  }
+  res.end('');
 });
- 
 
 server.listen(PORT, () => {
+  //ApiCMC();
+  
   console.log(`Server running at http://localhost:${PORT}/`);
 });
+//select now()
 
-
-//https://pro-api.coinmarketcap.com/v2/cryptocurrency/info?id=1  
-//
-/*
-"logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/1.png",
-"id": 1,
-"name": "Bitcoin",
-"symbol": "BTC",
-"slug": "bitcoin",
-"description": "Bitcoin (BTC) is a consensus network that enables a new payment system and a completely digital currency. Powered by its users, it is a peer to peer payment network that requires no central authority to operate. On October 31st, 2008, an individual or group of individuals operating under the pseudonym "Satoshi Nakamoto" published the Bitcoin Whitepaper and described it as: "a purely peer-to-peer version of electronic cash would allow online payments to be sent directly from one party to another without going through a financial institution."",
-"date_added": "2013-04-28T00:00:00.000Z",
-"date_launched": "2013-04-28T00:00:00.000Z"
-*/
-
-//https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest  
