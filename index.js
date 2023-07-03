@@ -167,7 +167,7 @@ const ApiCMC=(funcion,cantidad)=>{
     grafica:'getGrafica'
   }) */
   let response = null;
-  const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+  const url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=10"
   new Promise(async (resolve, reject) => {
       try {
         response = await axios.get(url, {
@@ -195,17 +195,11 @@ const ApiCMC=(funcion,cantidad)=>{
     default: return(JSON.stringify(data));
   }
 }
-async function ejecucion(){
-  //let vuelta = []
-  for(var x=1;x<2;x++){
-      await ApiCMC('',x);
-  }
-}
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Content-Type', 'application/json');
   res.end('Hello World!');
-  ejecucion();
+  ApiCMC('',0);
 });
  
 
